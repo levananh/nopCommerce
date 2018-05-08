@@ -52,6 +52,7 @@ namespace Nop.Services.Media
         private readonly MediaSettings _mediaSettings;
         private readonly IDataProvider _dataProvider;
         private readonly INopFileProvider _fileProvider;
+        private readonly IRepository<PictureBinary> _pictureBinaryRepository;
 
         #endregion
 
@@ -70,6 +71,7 @@ namespace Nop.Services.Media
         /// <param name="mediaSettings">Media settings</param>
         /// <param name="dataProvider">Data provider</param>
         /// <param name="fileProvider">File provider</param>
+        /// <param name="pictureBinaryRepository">PictureBinary repository</param>
         public PictureService(IRepository<Picture> pictureRepository,
             IRepository<ProductPicture> productPictureRepository,
             ISettingService settingService,
@@ -79,7 +81,8 @@ namespace Nop.Services.Media
             IEventPublisher eventPublisher,
             MediaSettings mediaSettings,
             IDataProvider dataProvider,
-            INopFileProvider fileProvider)
+            INopFileProvider fileProvider,
+            IRepository<PictureBinary> pictureBinaryRepository)
         {
             this._pictureRepository = pictureRepository;
             this._productPictureRepository = productPictureRepository;
@@ -91,6 +94,7 @@ namespace Nop.Services.Media
             this._mediaSettings = mediaSettings;
             this._dataProvider = dataProvider;
             this._fileProvider = fileProvider;
+            this._pictureBinaryRepository = pictureBinaryRepository;
         }
 
         #endregion
@@ -299,7 +303,7 @@ namespace Nop.Services.Media
         {
             return _fileProvider.GetAbsolutePath("images", fileName);
         }
-
+        
         /// <summary>
         /// Gets the loaded picture binary depending on picture storage settings
         /// </summary>
@@ -312,8 +316,9 @@ namespace Nop.Services.Media
                 throw new ArgumentNullException(nameof(picture));
 
             var result = fromDb
-                ? picture.PictureBinary
+                ? GetPictureBinaryByPictureId(picture.Id).BinaryData
                 : LoadPictureFromFile(picture.Id, picture.MimeType);
+
             return result;
         }
 
@@ -389,6 +394,81 @@ namespace Nop.Services.Media
             }
         }
         
+        /// Gets a picture binary data
+        /// </summary>
+        /// <param name="pictureId">Picture identifier</param>
+        /// <returns>Picture binary</returns>
+        protected virtual PictureBinary GetPictureBinaryByPictureId(int pictureId)
+        {
+            if (pictureId == 0)
+                return null;
+
+            return _pictureBinaryRepository.Table.FirstOrDefault(pb => pb.PictureId == pictureId);
+        }
+
+        /// <summary>
+        /// Deletes a picture binary data
+        /// </summary>
+        /// <param name="pictureBinary">Picture binary data</param>
+        protected virtual void DeletePictureBinary(PictureBinary pictureBinary)
+        {
+            if (pictureBinary == null)
+                throw new ArgumentNullException(nameof(pictureBinary));
+
+            _pictureBinaryRepository.Delete(pictureBinary);
+
+            //event notification
+            _eventPublisher.EntityDeleted(pictureBinary);
+        }
+        
+        
+        /// <summary>
+        /// Deletes a picture binary data
+        /// </summary>
+        /// <param name="pictureId">Picture identifier</param>
+        protected virtual void DeletePictureBinary(int pictureId)
+        {
+            DeletePictureBinary(GetPictureBinaryByPictureId(pictureId));
+        }
+        
+        /// <summary>
+        /// Updates the picture binary data
+        /// </summary>
+        /// <param name="pictureId">The picture identifier</param>
+        /// <param name="binaryData">The picture binary data</param>
+        /// <returns>Picture binary</returns>
+        protected virtual PictureBinary UpdatePictureBinary(int pictureId, byte[] binaryData)
+        {
+            var pictureBinary = GetPictureBinaryByPictureId(pictureId);
+            var isNew = pictureBinary == null;
+
+            if (isNew)
+                pictureBinary = new PictureBinary
+                {
+                    PictureId = pictureId
+                };
+
+            pictureBinary.BinaryData = binaryData;
+
+            if (isNew)
+                _pictureBinaryRepository.Insert(pictureBinary);
+            else
+                _pictureBinaryRepository.Update(pictureBinary);
+
+            return pictureBinary;
+        }
+        
+        /// <summary>
+        /// Insert the picture binary data
+        /// </summary>
+        /// <param name="pictureId">The picture identifier</param>
+        /// <param name="binaryData">The picture binary data</param>
+        /// <returns>Picture binary</returns>
+        protected virtual PictureBinary InsertPictureBinary(int pictureId, byte[] binaryData)
+        {
+            return UpdatePictureBinary(pictureId, binaryData);
+        }
+
         #endregion
 
         #region Getting picture local path/URL methods
@@ -646,6 +726,7 @@ namespace Nop.Services.Media
                 DeletePictureOnFileSystem(picture);
 
             //delete from database
+            DeletePictureBinary(picture.Id);
             _pictureRepository.Delete(picture);
 
             //event notification
@@ -717,14 +798,14 @@ namespace Nop.Services.Media
 
             var picture = new Picture
             {
-                PictureBinary = StoreInDb ? pictureBinary : new byte[0],
                 MimeType = mimeType,
                 SeoFilename = seoFilename,
                 AltAttribute = altAttribute,
                 TitleAttribute = titleAttribute,
-                IsNew = isNew,
+                IsNew = isNew
             };
             _pictureRepository.Insert(picture);
+            InsertPictureBinary(picture.Id, StoreInDb ? pictureBinary : new byte[0]);
 
             if (!StoreInDb)
                 SavePictureInFile(picture.Id, pictureBinary, mimeType);
@@ -766,8 +847,7 @@ namespace Nop.Services.Media
             //delete old thumbs if a picture has been changed
             if (seoFilename != picture.SeoFilename)
                 DeletePictureThumbs(picture);
-
-            picture.PictureBinary = StoreInDb ? pictureBinary : new byte[0];
+           
             picture.MimeType = mimeType;
             picture.SeoFilename = seoFilename;
             picture.AltAttribute = altAttribute;
@@ -775,6 +855,7 @@ namespace Nop.Services.Media
             picture.IsNew = isNew;
 
             _pictureRepository.Update(picture);
+            UpdatePictureBinary(pictureId, StoreInDb ? pictureBinary : new byte[0]);
 
             if (!StoreInDb)
                 SavePictureInFile(picture.Id, pictureBinary, mimeType);
@@ -907,7 +988,7 @@ namespace Nop.Services.Media
                                 //now on file system
                                 SavePictureInFile(picture.Id, pictureBinary, picture.MimeType);
                             //update appropriate properties
-                            picture.PictureBinary = value ? pictureBinary : new byte[0];
+                            UpdatePictureBinary(picture.Id, value ? pictureBinary : new byte[0]);
                             picture.IsNew = true;
                             //raise event?
                             //_eventPublisher.EntityUpdated(picture);
