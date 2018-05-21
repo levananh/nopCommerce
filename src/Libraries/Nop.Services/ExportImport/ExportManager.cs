@@ -1649,6 +1649,22 @@ namespace Nop.Services.ExportImport
             return sb.ToString();
         }
 
+        /// <summary>
+        /// Export customer info (GDPR request) to CSV 
+        /// </summary>
+        /// <param name="customer">Customer</param>
+        /// <param name="storeId">Store identifier</param>
+        /// <returns>Result in CSV</returns>
+        public virtual string ExportCustomerGdprInfoToCsv(Customer customer, int storeId)
+        {
+            if (customer == null)
+                throw new ArgumentNullException(nameof(customer));
+
+            var orders = _orderService.SearchOrders(customerId: customer.Id);
+
+            //UNDONE
+            return "";
+        }
         #endregion
     }
 }

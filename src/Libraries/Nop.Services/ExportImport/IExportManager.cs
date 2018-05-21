@@ -89,5 +89,13 @@ namespace Nop.Services.ExportImport
         /// <param name="states">States</param>
         /// <returns>Result in TXT (string) format</returns>
         string ExportStatesToTxt(IList<StateProvince> states);
+
+        /// <summary>
+        /// Export customer info (GDPR request) to CSV 
+        /// </summary>
+        /// <param name="customer">Customer</param>
+        /// <param name="storeId">Store identifier</param>
+        /// <returns>Result in CSV</returns>
+        string ExportCustomerGdprInfoToCsv(Customer customer, int storeId);
     }
 }
