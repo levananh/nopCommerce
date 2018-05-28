@@ -122,6 +122,44 @@ namespace Nop.Services.Configuration
             });
         }
 
+        /// <summary>
+        /// Set setting value
+        /// </summary>
+        /// <param name="type">Type</param>
+        /// <param name="key">Key</param>
+        /// <param name="value">Value</param>
+        /// <param name="storeId">Store identifier</param>
+        /// <param name="clearCache">A value indicating whether to clear cache after setting update</param>
+        protected virtual void SetSetting(Type type, string key, object value, int storeId = 0, bool clearCache = true)
+        {
+            if (key == null)
+                throw new ArgumentNullException(nameof(key));
+            key = key.Trim().ToLowerInvariant();
+            var valueStr = TypeDescriptor.GetConverter(type).ConvertToInvariantString(value);
+
+            var allSettings = GetAllSettingsCached();
+            var settingForCaching = allSettings.ContainsKey(key) ?
+                allSettings[key].FirstOrDefault(x => x.StoreId == storeId) : null;
+            if (settingForCaching != null)
+            {
+                //update
+                var setting = GetSettingById(settingForCaching.Id);
+                setting.Value = valueStr;
+                UpdateSetting(setting, clearCache);
+            }
+            else
+            {
+                //insert
+                var setting = new Setting
+                {
+                    Name = key,
+                    Value = valueStr,
+                    StoreId = storeId
+                };
+                InsertSetting(setting, clearCache);
+            }
+        }
+
         #endregion
 
         #region Methods
@@ -292,44 +330,6 @@ namespace Nop.Services.Configuration
         public virtual void SetSetting<T>(string key, T value, int storeId = 0, bool clearCache = true)
         {
             SetSetting(typeof(T), key, value, storeId, clearCache);
-        }
-
-        /// <summary>
-        /// Set setting value
-        /// </summary>
-        /// <param name="type">Type</param>
-        /// <param name="key">Key</param>
-        /// <param name="value">Value</param>
-        /// <param name="storeId">Store identifier</param>
-        /// <param name="clearCache">A value indicating whether to clear cache after setting update</param>
-        public virtual void SetSetting(Type type, string key, object value, int storeId = 0, bool clearCache = true)
-        {
-            if (key == null)
-                throw new ArgumentNullException(nameof(key));
-            key = key.Trim().ToLowerInvariant();
-            var valueStr = TypeDescriptor.GetConverter(type).ConvertToInvariantString(value);
-
-            var allSettings = GetAllSettingsCached();
-            var settingForCaching = allSettings.ContainsKey(key) ?
-                allSettings[key].FirstOrDefault(x => x.StoreId == storeId) : null;
-            if (settingForCaching != null)
-            {
-                //update
-                var setting = GetSettingById(settingForCaching.Id);
-                setting.Value = valueStr;
-                UpdateSetting(setting, clearCache);
-            }
-            else
-            {
-                //insert
-                var setting = new Setting
-                {
-                    Name = key,
-                    Value = valueStr,
-                    StoreId = storeId
-                };
-                InsertSetting(setting, clearCache);
-            }
         }
 
         /// <summary>
