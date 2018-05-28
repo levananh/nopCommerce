@@ -291,13 +291,26 @@ namespace Nop.Services.Configuration
         /// <param name="clearCache">A value indicating whether to clear cache after setting update</param>
         public virtual void SetSetting<T>(string key, T value, int storeId = 0, bool clearCache = true)
         {
+            SetSetting(typeof(T), key, value, storeId, clearCache);
+        }
+
+        /// <summary>
+        /// Set setting value
+        /// </summary>
+        /// <param name="type">Type</param>
+        /// <param name="key">Key</param>
+        /// <param name="value">Value</param>
+        /// <param name="storeId">Store identifier</param>
+        /// <param name="clearCache">A value indicating whether to clear cache after setting update</param>
+        public virtual void SetSetting(Type type, string key, object value, int storeId = 0, bool clearCache = true)
+        {
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
             key = key.Trim().ToLowerInvariant();
-            var valueStr = TypeDescriptor.GetConverter(typeof(T)).ConvertToInvariantString(value);
+            var valueStr = TypeDescriptor.GetConverter(type).ConvertToInvariantString(value);
 
             var allSettings = GetAllSettingsCached();
-            var settingForCaching = allSettings.ContainsKey(key) ? 
+            var settingForCaching = allSettings.ContainsKey(key) ?
                 allSettings[key].FirstOrDefault(x => x.StoreId == storeId) : null;
             if (settingForCaching != null)
             {
@@ -415,12 +428,11 @@ namespace Nop.Services.Configuration
 
                 if (!TypeDescriptor.GetConverter(prop.PropertyType).CanConvertFrom(typeof(string)))
                     continue;
-
+                
                 var key = typeof(T).Name + "." + prop.Name;
-                //Duck typing is not supported in C#. That's why we're using dynamic type
-                dynamic value = prop.GetValue(settings, null);
+                var value = prop.GetValue(settings, null);
                 if (value != null)
-                    SetSetting(key, value, storeId, false);
+                    SetSetting(prop.PropertyType, key, value, storeId, false);
                 else
                     SetSetting(key, "", storeId, false);
             }
@@ -459,8 +471,7 @@ namespace Nop.Services.Configuration
             }
 
             var key = settings.GetSettingKey(keySelector);
-            //Duck typing is not supported in C#. That's why we're using dynamic type
-            dynamic value = propInfo.GetValue(settings, null);
+            var value = (TPropType)propInfo.GetValue(settings, null);
             if (value != null)
                 SetSetting(key, value, storeId, clearCache);
             else
