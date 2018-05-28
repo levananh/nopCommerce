@@ -60,8 +60,8 @@ namespace Nop.Web.Framework.Security.Captcha
         /// </summary>
         public string ReCaptchaTheme { get; set; }
         /// <summary>
-        /// reCAPTCHA language
+        /// reCAPTCHA default language
         /// </summary>
-        public string ReCaptchaLanguage { get; set; }
+        public string ReCaptchaDefaultLanguage { get; set; }
     }
 }

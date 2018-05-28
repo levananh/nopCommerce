@@ -53,16 +53,8 @@ namespace Nop.Web.Framework.TagHelpers.Public
             //contextualize IHtmlHelper
             var viewContextAware = _htmlHelper as IViewContextAware;
             viewContextAware?.Contextualize(ViewContext);
-
-            //generate captcha control
-            var captchaControl = new GRecaptchaControl
-            {
-                Theme = _captchaSettings.ReCaptchaTheme,
-                Id = "recaptcha",
-                PublicKey = _captchaSettings.ReCaptchaPublicKey,
-                Language = _captchaSettings.ReCaptchaLanguage
-            };
-            var captchaControlHtml = captchaControl.RenderControl();
+            
+            var captchaControlHtml = _htmlHelper.GenerateCaptcha().RenderControl();
 
             //tag details
             output.TagName = "div";

@@ -744,7 +744,7 @@ namespace Nop.Web.Areas.Admin.Infrastructure.Mapper
                 .ForMember(dest => dest.Form, mo => mo.Ignore());
             CreateMap<CaptchaSettingsModel, CaptchaSettings>()
                 .ForMember(dest => dest.ReCaptchaTheme, mo => mo.Ignore())
-                .ForMember(dest => dest.ReCaptchaLanguage, mo => mo.Ignore());
+                .ForMember(dest => dest.ReCaptchaDefaultLanguage, mo => mo.Ignore());
             CreateMap<TaxSettings, TaxSettingsModel>()
                 .ForMember(dest => dest.DefaultTaxAddress, mo => mo.Ignore())
                 .ForMember(dest => dest.TaxDisplayTypeValues, mo => mo.Ignore())
