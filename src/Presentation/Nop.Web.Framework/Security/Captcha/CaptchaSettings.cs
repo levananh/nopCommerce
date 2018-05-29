@@ -63,5 +63,9 @@ namespace Nop.Web.Framework.Security.Captcha
         /// reCAPTCHA default language
         /// </summary>
         public string ReCaptchaDefaultLanguage { get; set; }
+        /// <summary>
+        /// A value indicating whether reCAPTCHA language should be set automatically
+        /// </summary>
+        public bool IsAllowedAutomaticallyChooseLanguage { get; set; }
     }
 }
