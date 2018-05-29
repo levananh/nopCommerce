@@ -23,26 +23,57 @@ namespace Nop.Data
         #endregion
 
         #region Utilities
-
+        
         /// <summary>
         /// Further configuration the model
         /// </summary>
         /// <param name="modelBuilder">The builder being used to construct the model for this context</param>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            //dynamically load all entity and query type configurations
-            var typeConfigurations = Assembly.GetExecutingAssembly().GetTypes().Where(type => 
-                (type.BaseType?.IsGenericType ?? false) 
-                    && (type.BaseType.GetGenericTypeDefinition() == typeof(NopEntityTypeConfiguration<>) 
-                        || type.BaseType.GetGenericTypeDefinition() == typeof(NopQueryTypeConfiguration<>)));
+            //get methods to apply configurations
+            var applyEntityTypeConfigurationMethod = typeof(NopObjectContext)
+                .GetMethod(nameof(ApplyEntityTypeConfiguration), BindingFlags.Instance | BindingFlags.NonPublic);
+            var applyQueryTypeConfigurationMethod = typeof(NopObjectContext)
+                .GetMethod(nameof(ApplyQueryTypeConfiguration), BindingFlags.Instance | BindingFlags.NonPublic);
 
-            foreach (var typeConfiguration in typeConfigurations)
+            //load all entity anf query type configurations
+            var genericTypes = Assembly.GetExecutingAssembly().GetTypes().Where(type => type.BaseType?.IsGenericType ?? false);
+            foreach (var genericType in genericTypes)
             {
-                dynamic configuration = Activator.CreateInstance(typeConfiguration);
-                modelBuilder.ApplyConfiguration(configuration);
+                var applyConfigurationMethod = 
+                    genericType.BaseType.GetGenericTypeDefinition() == typeof(NopEntityTypeConfiguration<>) ? applyEntityTypeConfigurationMethod 
+                    : genericType.BaseType.GetGenericTypeDefinition() == typeof(NopQueryTypeConfiguration<>) ? applyQueryTypeConfigurationMethod 
+                    : null;
+                
+                //dynamically invoke apply configuration method
+                applyConfigurationMethod
+                    ?.MakeGenericMethod(genericType.BaseType.GenericTypeArguments)
+                    .Invoke(this, new object[] { modelBuilder, genericType });
             }
-            
+
             base.OnModelCreating(modelBuilder);
+        }
+
+        /// <summary>
+        /// Apply configuration that is defined by the passed type
+        /// </summary>
+        /// <typeparam name="TEntity">Entity type</typeparam>
+        /// <param name="modelBuilder">The builder being used to construct the model for this context</param>
+        /// <param name="configurationType">Configuration type</param>
+        protected virtual void ApplyEntityTypeConfiguration<TEntity>(ModelBuilder modelBuilder, Type configurationType) where TEntity : BaseEntity
+        {
+            modelBuilder.ApplyConfiguration((NopEntityTypeConfiguration<TEntity>)Activator.CreateInstance(configurationType));
+        }
+
+        /// <summary>
+        /// Apply configuration that is defined by the passed type 
+        /// </summary>
+        /// <typeparam name="TQuery">Query type</typeparam>
+        /// <param name="modelBuilder">The builder being used to construct the model for this context</param>
+        /// <param name="configurationType">Configuration type</param>
+        protected virtual void ApplyQueryTypeConfiguration<TQuery>(ModelBuilder modelBuilder, Type configurationType) where TQuery : class
+        {
+            modelBuilder.ApplyConfiguration((NopQueryTypeConfiguration<TQuery>)Activator.CreateInstance(configurationType));
         }
 
         #endregion
