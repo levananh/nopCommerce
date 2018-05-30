@@ -31,12 +31,13 @@ namespace Nop.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             //get methods to apply configurations
-            var applyEntityTypeConfigurationMethod = typeof(NopObjectContext)
-                .GetMethod(nameof(ApplyEntityTypeConfiguration), BindingFlags.Instance | BindingFlags.NonPublic);
-            var applyQueryTypeConfigurationMethod = typeof(NopObjectContext)
-                .GetMethod(nameof(ApplyQueryTypeConfiguration), BindingFlags.Instance | BindingFlags.NonPublic);
+            const BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.NonPublic;
+            var applyEntityTypeConfigurationMethod = GetType()
+                .GetMethod(nameof(ApplyEntityTypeConfiguration), bindingFlags);
+            var applyQueryTypeConfigurationMethod = GetType()
+                .GetMethod(nameof(ApplyQueryTypeConfiguration), bindingFlags);
 
-            //load all entity anf query type configurations
+            //load all entity and query type configurations
             var genericTypes = Assembly.GetExecutingAssembly().GetTypes().Where(type => type.BaseType?.IsGenericType ?? false);
             foreach (var genericType in genericTypes)
             {
